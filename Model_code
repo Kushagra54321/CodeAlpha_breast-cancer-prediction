@@ -1,0 +1,110 @@
+# Import Libraries (if not already imported earlier)
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+
+from sklearn.linear_model import LogisticRegression
+# from sklearn.svm import SVC
+# from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+
+# Load Breast Cancer Dataset from sklearn
+from sklearn.datasets import load_breast_cancer
+data = load_breast_cancer()
+X = pd.DataFrame(data.data, columns=data.feature_names)
+y = pd.Series(data.target)
+
+# 0 = malignant, 1 = benign (already encoded)
+# Scale the Data
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+
+# Train Models
+lr = LogisticRegression()
+# svm = SVC()
+# rf = RandomForestClassifier()
+xgb = XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+
+lr.fit(X_train, y_train)
+# svm.fit(X_train, y_train)
+# rf.fit(X_train, y_train)
+xgb.fit(X_train, y_train)
+
+# Predictions
+y_pred_lr = lr.predict(X_test)
+# y_pred_svm = svm.predict(X_test)
+# y_pred_rf = rf.predict(X_test)
+y_pred_xgb = xgb.predict(X_test)
+
+
+# Evaluation Function
+def evaluate_model(y_true, y_pred, model_name):
+    print(f"\n=== {model_name} ===")
+    print(classification_report(y_true, y_pred))
+    cm = confusion_matrix(y_true, y_pred)
+    sns.heatmap(cm, annot=True, fmt='d')
+    plt.title(f"{model_name} Confusion Matrix")
+    plt.show()
+
+evaluate_model(y_test, y_pred_lr, "Logistic Regression")
+# evaluate_model(y_test, y_pred_svm, "SVM")
+# evaluate_model(y_test, y_pred_rf, "Random Forest")
+evaluate_model(y_test, y_pred_xgb, "XGBoost")
+
+
+# Accuracy Comparison
+models = ['LR', 'XGB']
+accuracies = [
+    accuracy_score(y_test, y_pred_lr),
+    accuracy_score(y_test, y_pred_xgb)
+]
+
+sns.barplot(x=models, y=accuracies)
+plt.title("Breast Cancer - Accuracy Comparison")
+plt.ylim(0.9, 1.0)
+plt.show()
+
+# # 🌟 Prediction from User Input
+
+print("\n🧠 Breast Cancer Prediction from Custom Input")
+
+# Get all feature names
+features = data.feature_names
+X_df = pd.DataFrame(data.data, columns=features)
+
+# Default values for all features = mean of each column
+default_values = X_df.mean()
+
+# Take user input for 2-3 important features
+user_inputs = default_values.copy()
+
+print("\n🔹 You can enter values for selected features (or press Enter to skip):")
+
+# Let’s say we allow 3 inputs
+for feature in ['mean radius', 'mean texture', 'mean smoothness']:
+    val = input(f"Enter value for {feature} : ")
+    if val.strip() != "":
+        user_inputs[feature] = float(val)
+
+# Convert to array and scale
+user_input_array = user_inputs.values.reshape(1, -1)
+user_input_scaled = scaler.transform(user_input_array)
+
+# Predict using model
+pred = xgb.predict(user_input_scaled)
+
+# Result display
+if pred[0] == 0:
+    print("\n🔴 Model Prediction: Malignant (Risk of cancer)")
+else:
+    print("\n🟢 Model Prediction: Benign (No signs of cancer)")
+
